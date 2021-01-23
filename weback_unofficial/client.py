@@ -5,6 +5,7 @@ import json
 from hashlib import md5
 
 
+
 class WebackApi(object):
 
     # boto3 session object
@@ -25,6 +26,7 @@ class WebackApi(object):
         self.__api_login = login
         self.__api_password = password
         self.__api_country_code = country_code
+        self.IOT_DATA_ENDPOINT = None
 
     def auth(self, login: str = None, password: str = None) -> dict:
         if login is None:
@@ -98,7 +100,7 @@ class WebackApi(object):
     def get_device_shadow(self, device_name, session = None, return_full = False):
         if (session == None):
             session = self.get_session()
-        client = session.client('iot-data')
+        client = session.client('iot-data', endpoint_url=IOT_DATA_ENDPOINT)
         resp = client.get_thing_shadow(thingName=device_name)
         shadow = json.loads(resp['payload'].read())
         if return_full:
@@ -108,7 +110,7 @@ class WebackApi(object):
     def publish_device_msg(self, device_name, desired_payload = {}, session = None):
         if (session == None):
             session = self.get_session()
-        client = session.client('iot-data')
+        client = session.client('iot-data', endpoint_url=IOT_DATA_ENDPOINT)
         topic = f"$aws/things/{device_name}/shadow/update"
         payload = {
             'state': {
@@ -141,6 +143,10 @@ class WebackApi(object):
 
         sess = self.make_session_from_cognito(aws_creds, region)
         self.aws_session = sess
+
+        iot_client = sess.client("iot", region_name=region)
+        self.IOT_DATA_ENDPOINT = iot_client.describe_endpoint(endpointType="iot:Data-ATS").get("endpointAddress")
+
         return sess
 
 class BaseDevice(object):
